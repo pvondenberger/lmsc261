@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <style>
+    body {
+        margin: 0;
+        padding: 30px;
+        background-color: #2a2a2a;
+        font-family: "Menlo";
+        display: flex;
+        justify-content: center;
+        min-height: 100vh;
+    }
+
+    #output {
+        max-width: 800px;
+        width: 100%;
+        color: lightblue;
+        line-height: 1.6;
+    }
+  </style>
+
+<body>
+  <div id="output"></div>
+
+  <script>
+    const output = document.getElementById('output');
+    
+    function print(message) {
+      if (message === undefined) { message = "undefined"; }
+      if (message === null) { message = "null"; }
+
+      const line = document.createElement('div');
+      line.textContent = message;
+      output.appendChild(line);
+    }
+  </script>
+  
+  <!-- Change Source File Here -->
+  <script src="helloworld.js"></script>
+  <!-- Change Source File Here -->
+
+</body>
+</html>
