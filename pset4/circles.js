@@ -5,7 +5,7 @@ const drawing = p5 => {
     }
 
     p5.draw = () => {
-        p5.background(140, 200, 120);
+        p5.background(10);
 
         let numCircles = 300;
 
@@ -20,11 +20,11 @@ const drawing = p5 => {
         for(let i = 0; i < numCircles; i++){
         let radius = minRad + i * radDiffernece;
         let colorR = (50 + i * colorDifference);
-        let colorG = (20);
-        let colorB = (120);
+        let colorG = (p5.mouseY);
+        let colorB = (p5.mouseX);
         p5.fill(colorR, colorG, colorB);
         p5.noStroke();
-        p5.circle((600/numCircles) * i, (600/numCircles) * i, radius);
+        p5.circle((p5.mouseX/numCircles) * i, (p5.mouseY/numCircles) * i, radius);
 
         }
     }
