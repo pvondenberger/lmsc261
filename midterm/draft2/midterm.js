@@ -178,13 +178,13 @@ const drawing = p5 => {
             additionalAngle = Math.PI / 2;
         }
         if(mode === 0 || mode === 2){
-        this.targetAngle = p5.atan2(p5.mouseY - this.y, p5.mouseX - this.x);
+        this.targetAngle = p5.atan2(p5.mouseY - this.y, p5.mouseX - this.x) + additionalAngle;
         }
         let diff = Math.atan2(Math.sin(this.targetAngle - this.angle), Math.cos(this.targetAngle - this.angle));
-        this.angle += diff * 0.08
+        this.angle += diff * 0.04
         p5.push();
         p5.translate(this.x, this.y);
-        p5.rotate(this.angle + additionalAngle);
+        p5.rotate(this.angle);
         p5.rect(0, 0, this.size / 4, this.size);
         p5.pop();
     }
@@ -438,7 +438,7 @@ function buildGrid(){
         } else {
             ripples = [];
         }
-
+        //draw boat
         if (mode === 1){
         boatVY = 0;
         boatTargetX = p5.windowWidth / 2;
