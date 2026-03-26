@@ -1,6 +1,6 @@
 const drawing = p5 => {
 
-    //ts dont work but looks cool either way
+    //ts dont work
     p5.rectMode(p5.center);
     p5.angleMode(p5.degrees);
 
@@ -20,13 +20,14 @@ const drawing = p5 => {
     let glowY = 0;
     let glowSize = 0;
     let glowAlpha = 0;
-    //BOAT vars (goat)
+    //BOAT vars
     let boatX = -50;
     let boatTargetX = 0;
     let boatBaseY = 300;
     let boatY = 300;
     let boatAngle = 0;
     let boatVY = 0;
+    let gradientProgress = 0;
 
     //defining key press actions
     p5.keyPressed = () => {
@@ -185,6 +186,14 @@ const drawing = p5 => {
         p5.push();
         p5.translate(this.x, this.y);
         p5.rotate(this.angle);
+        let c = p5.color(255, 255, 255);
+        if(mode === 1){
+            c.setAlpha(190)
+        } else { 
+            c.setAlpha(255);
+        }
+        
+        p5.fill(c);
         p5.rect(0, 0, this.size / 4, this.size);
         p5.pop();
     }
@@ -335,6 +344,35 @@ function buildGrid(){
         boatAngle += 0.0002;
         return;
     }
+
+    //function for drawing the rectangles that make up the gradient in mode 2
+    function drawGradient() {
+        let rectCount = 60;
+        let visibleHeight = p5.windowHeight * gradientProgress;
+        let startY = p5.windowHeight - visibleHeight;
+        let bandHeight = p5.windowHeight / rectCount;
+
+    p5.push();
+    p5.noStroke();
+
+    for (let i = 0; i < rectCount; i++) {
+        let y = i * bandHeight;
+
+        if (y >= startY) {
+            let t = i / (rectCount - 1);
+
+            let r = p5.lerp(10, 0, t);
+            let g = p5.lerp(40, 120, t);
+            let b = p5.lerp(90, 220, t);
+
+            p5.fill(r, g, b);
+            p5.rect(0, y, p5.width, bandHeight + 1);
+        }
+    }
+
+    p5.pop();
+}
+
     //shape of boat
     function drawBoat(){
         p5.push();
@@ -392,7 +430,21 @@ function buildGrid(){
 
     //actually displaying the shit
     p5.draw = () => {
+        //draw boat & gradient
+        if (mode === 1){
+        boatVY = 0;
+        boatTargetX = p5.windowWidth / 2;
+        gradientProgress = p5.lerp(gradientProgress, 1.01, 0.08); // defines speed of "gradient progress"
+        drawGradient();
+        updateBoat();
+        drawBoat();
+        } else {
+        boatTargetX = p5.windowWidth / 2;
+        gradientProgress = 0;
         p5.background(10);
+        fallBoat();
+        drawBoat();
+        }
         // "background explosion"
         if(glowAlpha > 0){
             p5.noStroke();
@@ -426,6 +478,9 @@ function buildGrid(){
                 }
             }
         }
+        if(hideUI === 0){
+        drawUI();
+        }
         //create the ripples
         if(mode === 1){
         for(let i = ripples.length - 1; i >= 0; i--){
@@ -437,20 +492,6 @@ function buildGrid(){
             }
         } else {
             ripples = [];
-        }
-        //draw boat
-        if (mode === 1){
-        boatVY = 0;
-        boatTargetX = p5.windowWidth / 2;
-        updateBoat();
-        drawBoat();
-        } else {
-        boatTargetX = p5.windowWidth / 2;
-        fallBoat();
-        drawBoat();
-        }
-        if(hideUI === 0){
-        drawUI();
         }
     };
 }
