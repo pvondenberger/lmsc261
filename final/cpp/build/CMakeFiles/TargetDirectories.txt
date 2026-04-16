@@ -1,0 +1,3 @@
+/Users/bdvondenberger/Documents/GitHub/lmsc261/final/cpp/build/CMakeFiles/metronome_engine.dir
+/Users/bdvondenberger/Documents/GitHub/lmsc261/final/cpp/build/CMakeFiles/edit_cache.dir
+/Users/bdvondenberger/Documents/GitHub/lmsc261/final/cpp/build/CMakeFiles/rebuild_cache.dir
