@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <string>
 #include <vector>
 #include <portaudio.h>
 
@@ -27,6 +28,11 @@ public:
 
     bool is_running() const;
 
+    void set_accent_pitch(double ratio);
+    double get_accent_pitch() const;
+    void load_click_sample(const std::string& path);
+    void build_default_click();
+
 private:
     static int pa_callback(
         const void* input,
@@ -39,7 +45,6 @@ private:
 
     int render(float* out, unsigned long framesPerBuffer);
     void rebuild_timing();
-    void build_click_waveforms();
 
     PaStream* stream_;
 
@@ -52,11 +57,12 @@ private:
     uint64_t global_sample_index_;
     int beat_in_bar_;
 
-    std::vector<float> click_;
-    std::vector<float> accent_;
+    std::vector<float> click_sample_;
 
     bool click_active_;
-    bool accent_active_;
-    size_t click_pos_;
-    size_t accent_pos_;
+    double click_pos_;
+    double playback_rate_;
+
+    double normal_pitch_;
+    double accent_pitch_;
 };

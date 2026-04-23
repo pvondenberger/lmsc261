@@ -20,22 +20,23 @@ MetronomeEngine::MetronomeEngine()
       global_sample_index_(0),
       beat_in_bar_(0),
       click_active_(false),
-      accent_active_(false),
-      click_pos_(0),
-      accent_pos_(0) {
+      click_pos_(0.0),
+      playback_rate_(1.0),
+      normal_pitch_(1.0),
+      accent_pitch_(1.25) {
     PaError err = Pa_Initialize();
     if (err != paNoError) {
         throw std::runtime_error(Pa_GetErrorText(err));
     }
 
-    build_click_waveforms();
+    build_default_click();
     rebuild_timing();
 
     err = Pa_OpenDefaultStream(
         &stream_,
-        0,                  // no input channels
-        1,                  // mono output
-        paFloat32,          // float samples
+        0,
+        1,
+        paFloat32,
         sample_rate_,
         kFramesPerBuffer,
         &MetronomeEngine::pa_callback,
@@ -57,34 +58,49 @@ MetronomeEngine::~MetronomeEngine() {
     Pa_Terminate();
 }
 
-void MetronomeEngine::build_click_waveforms() {
-    const double click_duration_sec = 0.03;
-    const double accent_duration_sec = 0.05;
+void MetronomeEngine::build_default_click() {
+    const double duration_sec = 0.03;
+    const size_t click_len = static_cast<size_t>(sample_rate_ * duration_sec);
 
-    const size_t click_len = static_cast<size_t>(sample_rate_ * click_duration_sec);
-    const size_t accent_len = static_cast<size_t>(sample_rate_ * accent_duration_sec);
-
-    click_.resize(click_len);
-    accent_.resize(accent_len);
+    click_sample_.clear();
+    click_sample_.resize(click_len);
 
     for (size_t i = 0; i < click_len; ++i) {
         double t = static_cast<double>(i) / sample_rate_;
         double env = std::exp(-60.0 * t);
-        click_[i] = static_cast<float>(0.35 * std::sin(2.0 * kPi * 1600.0 * t) * env);
-    }
 
-    for (size_t i = 0; i < accent_len; ++i) {
-        double t = static_cast<double>(i) / sample_rate_;
-        double env = std::exp(-45.0 * t);
-        accent_[i] = static_cast<float>(0.5 * std::sin(2.0 * kPi * 2200.0 * t) * env);
+        click_sample_[i] = static_cast<float>(
+            0.35 * std::sin(2.0 * kPi * 1600.0 * t) * env
+        );
     }
+}
+
+void MetronomeEngine::load_click_sample(const std::string& path) {
+    (void)path;
+    build_default_click();
+}
+
+void MetronomeEngine::set_accent_pitch(double ratio) {
+    if (ratio < 0.1) {
+        ratio = 0.1;
+    }
+    accent_pitch_ = ratio;
+}
+
+double MetronomeEngine::get_accent_pitch() const {
+    return accent_pitch_;
 }
 
 void MetronomeEngine::rebuild_timing() {
     int bpm = bpm_.load();
+    if (bpm < 1) {
+        bpm = 1;
+    }
+
     double beat_multiplier = 4.0 / static_cast<double>(denominator_);
     double spb = (60.0 * sample_rate_) / static_cast<double>(bpm);
     uint64_t result = static_cast<uint64_t>(spb * beat_multiplier);
+
     samples_per_beat_.store(std::max<uint64_t>(1, result));
 }
 
@@ -96,9 +112,8 @@ void MetronomeEngine::start() {
     global_sample_index_ = 0;
     beat_in_bar_ = 0;
     click_active_ = false;
-    accent_active_ = false;
-    click_pos_ = 0;
-    accent_pos_ = 0;
+    click_pos_ = 0.0;
+    playback_rate_ = normal_pitch_;
 
     PaError err = Pa_StartStream(stream_);
     if (err != paNoError) {
@@ -122,6 +137,10 @@ void MetronomeEngine::stop() {
 }
 
 void MetronomeEngine::set_bpm(int bpm) {
+    if (bpm < 1) {
+        bpm = 1;
+    }
+
     bpm_.store(bpm);
     rebuild_timing();
 }
@@ -131,12 +150,19 @@ int MetronomeEngine::get_meter() const {
 }
 
 void MetronomeEngine::set_meter(int beats) {
-    if (beats < 1) beats = 1;
+    if (beats < 1) {
+        beats = 1;
+    }
+
     beats_per_bar_ = beats;
+    beat_in_bar_ = 0;
 }
 
 void MetronomeEngine::set_denominator(int d) {
-    if (d < 1) d = 1;
+    if (d < 1) {
+        d = 1;
+    }
+
     denominator_ = d;
     rebuild_timing();
 }
@@ -172,16 +198,22 @@ int MetronomeEngine::render(float* out, unsigned long framesPerBuffer) {
         return paContinue;
     }
 
+    // Safety fallback in case the sample was somehow cleared.
+    if (click_sample_.empty()) {
+        build_default_click();
+    }
+
     const uint64_t spb = samples_per_beat_.load();
 
     for (unsigned long i = 0; i < framesPerBuffer; ++i) {
         if (global_sample_index_ % spb == 0) {
-            if (beat_in_bar_ % 3 == 0) {
-                accent_active_ = true;
-                accent_pos_ = 0;
+            click_active_ = true;
+            click_pos_ = 0.0;
+
+            if (beat_in_bar_ == 0) {
+                playback_rate_ = accent_pitch_;
             } else {
-                click_active_ = true;
-                click_pos_ = 0;
+                playback_rate_ = normal_pitch_;
             }
 
             beat_in_bar_ = (beat_in_bar_ + 1) % beats_per_bar_;
@@ -189,19 +221,22 @@ int MetronomeEngine::render(float* out, unsigned long framesPerBuffer) {
 
         float sample = 0.0f;
 
-        if (accent_active_) {
-            sample += accent_[accent_pos_++];
-            if (accent_pos_ >= accent_.size()) {
-                accent_active_ = false;
-                accent_pos_ = 0;
-            }
-        }
+        if (click_active_ && !click_sample_.empty()) {
+            size_t i0 = static_cast<size_t>(click_pos_);
 
-        if (click_active_) {
-            sample += click_[click_pos_++];
-            if (click_pos_ >= click_.size()) {
+            if (i0 >= click_sample_.size()) {
                 click_active_ = false;
-                click_pos_ = 0;
+                click_pos_ = 0.0;
+            } else {
+                size_t i1 = std::min(i0 + 1, click_sample_.size() - 1);
+                double frac = click_pos_ - static_cast<double>(i0);
+
+                sample = static_cast<float>(
+                    click_sample_[i0] * (1.0 - frac) +
+                    click_sample_[i1] * frac
+                );
+
+                click_pos_ += playback_rate_;
             }
         }
 
