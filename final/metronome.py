@@ -138,9 +138,9 @@ def main(page: ft.Page):
 
     def toggle_transport(e):
         if engine.is_running():
-            engine.stop()
+            stop()
         else:
-            engine.start()
+            start()
 
         update_trasnport_button()
         page.update()
@@ -189,7 +189,6 @@ def main(page: ft.Page):
     interface = ft.Container(
         content=ft.Column(controls=[
             ft.Container(
-                bgcolor=ft.Colors.AMBER_900,
                 content=ft.Row(
                     alignment=ft.MainAxisAlignment.CENTER,
                     controls=[

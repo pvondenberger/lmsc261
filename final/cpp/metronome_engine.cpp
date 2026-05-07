@@ -198,7 +198,7 @@ int MetronomeEngine::render(float* out, unsigned long framesPerBuffer) {
         return paContinue;
     }
 
-    // Safety fallback in case the sample was somehow cleared.
+    // Safety fallback in case the sample was somehow cleared
     if (click_sample_.empty()) {
         build_default_click();
     }
